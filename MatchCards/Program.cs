@@ -1,3 +1,4 @@
+using DAL.Context;
 using MatchCards.Extensions;
 using MatchCards.Hubs;
 using MatchCards.Services;
@@ -50,6 +51,13 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSignalR();
+
+builder.Services.AddSpaStaticFiles(options =>
+{
+    options.RootPath = "wwwroot/";
+});
+
+builder.Services.AddDbContext<GameContext>();
 
 builder.Services.AddScoped<PlayerService>();
 builder.Services.AddScoped<GameService>();

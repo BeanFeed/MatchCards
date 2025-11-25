@@ -23,6 +23,8 @@ public class GameContext : DbContext
         base.OnConfiguring(optionsBuilder);
         optionsBuilder.UseLazyLoadingProxies();
         optionsBuilder.EnableSensitiveDataLogging();
+
+        optionsBuilder.UseSqlite($"Data Source={Path.Join(Directory.GetCurrentDirectory(),"Data", "gamedata.sqlite")}");
     }
     
     
