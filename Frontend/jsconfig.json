@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"],
+      "#build/ui": [
+        "./node_modules/.nuxt-ui/ui"
+      ]
+    }
+  },
+  "exclude": ["node_modules", "dist"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue", "src/requests/*.js", "auto-imports.d.ts", "components.d.ts"]
+
+}
