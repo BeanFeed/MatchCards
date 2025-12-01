@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using DAL.Context;
 using DAL.Entities;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 
 namespace MatchCards.Services;
@@ -26,7 +27,7 @@ public class PlayerService(GameContext context)
             new(ClaimTypes.Name, player.Name)
         };
         
-        return (player, new ClaimsPrincipal(new ClaimsIdentity(claims)));
+        return (player, new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)));
     }
     
     public async Task<GameState[]> GetPlayerGameStates(Guid playerId)

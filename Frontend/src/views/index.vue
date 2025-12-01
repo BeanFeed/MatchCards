@@ -1,20 +1,39 @@
 <script setup lang="js">
-  import {getMe} from "@/requests/player.js";
+import {createPlayer, getMe} from "@/requests/player.js";
   import {ref} from "vue";
 
   const toast = useToast();
   const isAuthed = ref(true);
-  
-  const res = await getMe();
-  console.log(res);
-  if(!res.ok) {
-    if(res.status === 401) isAuthed.value = false;
-    else res.json().then(data => {
+  const newName = ref("");
+  try {
+    const res = await getMe();
+    console.log(res);
+    if(!res.ok) {
+      if(res.status === 401) isAuthed.value = false;
+      else res.json().then(data => {
+        toast.add({
+          title: res.statusText,
+          description: data,
+        });
+      })
+    }
+  } catch (error) {
+    toast.add({
+      title: "Error",
+      description: "Server is unreachable"
+    });
+  }
+
+
+  async function signup() {
+    try {
+      const res = await createPlayer(newName.value);
+    } catch (error) {
       toast.add({
-        title: res.statusText,
-        description: data,
+        title: "Error",
+        description: "Server is unreachable: " +  error.message
       });
-    })
+    }
   }
 
 </script>
@@ -23,7 +42,7 @@
   <div class="flex flex-col h-screen">
     <div class="bg-neutral-900 shadow-glow p-2 grid grid-cols-3 navbar h-min">
       <div class="w-full p-1">
-        <p>Austin's EGR 101 Project</p>
+        <p class="text-xs lg:text-base">Austin's EGR 101 Project</p>
       </div>
       <div class="w-full p-1">
         <h1 class="text-center text-2xl font-bold w-full">Match Cards</h1>
@@ -39,8 +58,8 @@
         <UCard>
           <div class="grid gap-4">
             <p class="text-center">Please enter your name</p>
-            <UInput class="w-full" placeholder="Name"/>
-            <UButton block>Continue</UButton>
+            <UInput v-model="newName" class="w-full" placeholder="Name"/>
+            <UButton @click="signup" block>Continue</UButton>
           </div>
         </UCard>
       </template>

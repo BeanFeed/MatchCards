@@ -16,7 +16,12 @@ public class PlayerController(PlayerService playerService) : Controller
         try
         {
             var (player, claims) = await playerService.CreatePlayer(name);
-            await HttpContext.SignInAsync(claims);
+            await HttpContext.SignInAsync(claims, new AuthenticationProperties()
+            {
+                AllowRefresh = true,
+                ExpiresUtc = DateTimeOffset.UtcNow.AddYears(100),
+                IsPersistent = true
+            });
             return Ok(player);
         }
         catch (Exception e)
