@@ -35,6 +35,11 @@ public class PlayerService(GameContext context)
         return await context.GameStates.Where(x => x.Player1Id == playerId || x.Player2Id == playerId).ToArrayAsync();
     }
     
+    public async Task<Score[]> GetPlayerScores(Guid playerId)
+    {
+        return await context.Scores.Where(x => x.PlayerId == playerId).OrderBy(x => x.Time).ToArrayAsync();
+    }
+    
     public async Task<Player> GetPlayer(Guid playerId)
     {
         var player = await context.Players.FindAsync(playerId);

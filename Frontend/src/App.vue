@@ -3,9 +3,7 @@
 
 <template>
   <UApp>
-    <Suspense>
-      <RouterView/>
-    </Suspense>
+    <router-view/>
   </UApp>
 </template>
 

@@ -141,7 +141,7 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
         
         await context.SaveChangesAsync();
     }
-
+    
     private async Task GenerateCards(Guid gameId)
     {
         List<int> cardValues = new List<int>();

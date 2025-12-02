@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using MatchCards.Models;
 using MatchCards.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
@@ -47,7 +48,12 @@ public class PlayerController(PlayerService playerService) : Controller
 
         try
         {
-            return Ok(await playerService.GetPlayer(Guid.Parse(identifier!.Value)));
+            return Ok(new MyInfo()
+            {
+                user = await playerService.GetPlayer(Guid.Parse(identifier!.Value)),
+                gameStates = await playerService.GetPlayerGameStates(Guid.Parse(identifier!.Value)),
+                scores = await playerService.GetPlayerScores(Guid.Parse(identifier!.Value))
+            });
         }
         catch (Exception e)
         {
