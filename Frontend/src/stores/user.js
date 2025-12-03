@@ -9,6 +9,8 @@ export const useUserStore = defineStore('user', () => {
   const games = ref([]);
   const scores = ref([]);
 
+  const socket = ref();
+
   function setUser(newUser) {
     console.log("New user", newUser);
     user.id = newUser.id;
@@ -22,5 +24,5 @@ export const useUserStore = defineStore('user', () => {
   function setScores(newScores) {
     scores.value = newScores;
   }
-  return { user, games, scores, setUser, setGames, setScores }
+  return { user, games, scores, socket, setUser, setGames, setScores }
 })

@@ -1,9 +1,10 @@
 <script setup lang="js">
   import {createPlayer, getMe} from "@/requests/player.js";
-  import {onMounted, ref} from "vue";
+  import {onMounted, onUnmounted, ref} from "vue";
 
   import {useToast} from "@nuxt/ui/composables";
   import {useUserStore} from "@/stores/user.js";
+  import CurrentUserGames from "@/components/CurrentUserGames.vue";
 
   let toast;
   const isAuthed = ref(true);
@@ -16,7 +17,7 @@
     {
       id:"game1",
       player1: {
-        id: "d5557310-9a9e-42d3-b8f6-aa188bc1df7a",
+        id: "8a476230-5b14-4951-9831-c89ac0a9b705",
         name: "Austin Dean"
       },
       player2: {
@@ -24,7 +25,7 @@
         name: "Bob"
       },
       currentTurn: {
-        id: "d5557310-9a9e-42d3-b8f6-aa188bc1df7a",
+        id: "8a476230-5b14-4951-9831-c89ac0a9b705",
         name: "Austin Dean"
       },
       player1Score: 0,
@@ -37,7 +38,7 @@
     {
       id:"game1",
       player1: {
-        id: "d5557310-9a9e-42d3-b8f6-aa188bc1df7a",
+        id: "8a476230-5b14-4951-9831-c89ac0a9b705",
         name: "Austin Dean"
       },
       player2: {
@@ -45,7 +46,7 @@
         name: "Bob"
       },
       currentTurn: {
-        id: "d5557310-9a9e-42d3-b8f6-aa188bc1df7a",
+        id: "8a476230-5b14-4951-9831-c89ac0a9b705",
         name: "Austin Dean"
       },
       player1Score: 0,
@@ -54,18 +55,19 @@
       isSinglePlayer: false,
       gameStartTime: null
 
-    },{
+    },
+    {
       id:"game1",
       player1: {
-        id: "d5557310-9a9e-42d3-b8f6-aa188bc1df7a",
+        id: "8a476230-5b14-4951-9831-c89ac0a9b705",
         name: "Austin Dean"
       },
       player2: {
         id: "player2",
-        name: "Bob"
+        name: "Jerehmiah Johnson"
       },
       currentTurn: {
-        id: "d5557310-9a9e-42d3-b8f6-aa188bc1df7a",
+        id: "8a476230-5b14-4951-9831-c89ac0a9b705",
         name: "Austin Dean"
       },
       player1Score: 0,
@@ -74,10 +76,11 @@
       isSinglePlayer: false,
       gameStartTime: null
 
-    },{
+    },
+    {
       id:"game1",
       player1: {
-        id: "d5557310-9a9e-42d3-b8f6-aa188bc1df7a",
+        id: "8a476230-5b14-4951-9831-c89ac0a9b705",
         name: "Austin Dean"
       },
       player2: {
@@ -85,7 +88,7 @@
         name: "Bob"
       },
       currentTurn: {
-        id: "d5557310-9a9e-42d3-b8f6-aa188bc1df7a",
+        id: "8a476230-5b14-4951-9831-c89ac0a9b705",
         name: "Austin Dean"
       },
       player1Score: 0,
@@ -94,23 +97,24 @@
       isSinglePlayer: false,
       gameStartTime: null
 
-    },{
+    },
+    {
       id:"game1",
       player1: {
-        id: "d5557310-9a9e-42d3-b8f6-aa188bc1df7a",
+        id: "8a476230-5b14-4951-9831-c89ac0a9b705",
         name: "Austin Dean"
       },
       player2: {
         id: "player2",
-        name: "Bob"
+        name: "Jerehmiah Johnson"
       },
       currentTurn: {
-        id: "d5557310-9a9e-42d3-b8f6-aa188bc1df7a",
+        id: "8a476230-5b14-4951-9831-c89ac0a9b705",
         name: "Austin Dean"
       },
-      player1Score: 0,
-      player2Score: 0,
-      isGameOver: false,
+      player1Score: 4,
+      player2Score: 5,
+      isGameOver: true,
       isSinglePlayer: false,
       gameStartTime: null
 
@@ -121,7 +125,7 @@
   async function signup() {
     try {
       const res = await createPlayer(newName.value);
-
+      await getUser();
     } catch (error) {
       toast.add({
         title: "Error",
@@ -130,27 +134,34 @@
     }
   }
 
+  async function getUser() {
+    const res = await getMe();
+    console.log(res);
+    if(!res.ok) {
+      if(res.status === 401) isAuthed.value = false;
+      else res.text().then(data => {
+        toast.add({
+          title: res.statusText,
+          description: data,
+        });
+      })
+      isAuthed.value = false;
+    } else {
+      const data = await res.json();
+      userStore.setUser(data.user);
+      userStore.setGames(data.gameStates);
+      userStore.setScores(data.scores);
+      console.log(data);
+      isAuthed.value = true;
+    }
+  }
+
+  const isBlock = ref(false);
+
   onMounted(async () => {
     toast = useToast();
     try {
-      const res = await getMe();
-      console.log(res);
-      if(!res.ok) {
-        if(res.status === 401) isAuthed.value = false;
-        else res.json().then(data => {
-          toast.add({
-            title: res.statusText,
-            description: data,
-          });
-        })
-      } else {
-        const data = await res.json();
-        userStore.setUser(data.user);
-        userStore.setGames(data.gameStates);
-        userStore.setScores(data.scores);
-        console.log(data);
-        isAuthed.value = true;
-      }
+      await getUser();
     } catch (error) {
       isServerReachable.value = false;
       console.log(error)
@@ -159,22 +170,25 @@
       //   description: "Server is unreachable"
       // });
     }
+
+    updateIsBlock();
+    window.addEventListener("resize", updateIsBlock);
   })
+
+  onUnmounted(() => {
+    window.removeEventListener("resize", updateIsBlock);
+  });
+
+  function updateIsBlock() {
+    isBlock.value = window.innerWidth <= 1028;
+  }
 </script>
 
 <template>
-  <div class="flex flex-col min-h-screen">
-    <div class="bg-neutral-900 shadow-glow p-2 grid grid-cols-3 navbar h-min sticky top-0 w-full">
-      <div class="w-full p-1">
-        <p class="text-xs lg:text-base">Austin's EGR 101 Project</p>
-      </div>
-      <div class="w-full p-1">
-        <h1 class="text-center text-2xl font-bold w-full">Match Cards</h1>
-      </div>
-      <div class="w-full p-1 flex justify-end gap-2">
-        <UButton variant="ghost" class="text-white">Scoreboard</UButton>
-      </div>
-
+  <div class="flex flex-col min-h-screen" :class="!isAuthed ? 'h-screen' : ''">
+    <Navbar/>
+    <div class="px-4 pt-4">
+      <UButton :block="isBlock">Find Match</UButton>
     </div>
     <div class="flex flex-col items-center justify-center h-full p-5">
       <template v-if="isServerReachable">

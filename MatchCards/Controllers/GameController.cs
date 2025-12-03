@@ -10,23 +10,78 @@ public class GameController(GameService gameService) : Controller
 {
     [HttpPost]
     [Authorize]
-    public async Task<IActionResult> FindMatch()
+    public async Task<IActionResult> JoinLobby()
     {
         try
         {
-            var gameState = await gameService.FindMatch();
-            if (gameState == null)
-            {
-                return Ok("You are in the queue, waiting for an opponent.");
-            }
-
-            return Ok(gameState);
+            await gameService.JoinLobby();
+            return Ok("You are in the lobby, waiting for an opponent.");
         }
         catch (Exception e)
         {
             return BadRequest(e.Message);
         }
     }
+
+    [HttpPost]
+    [Authorize]
+    public async Task<IActionResult> LeaveLobby()
+    {
+        try
+        {
+            await gameService.LeaveLobby();
+            return Ok("You have left the lobby.");
+        }
+        catch (Exception e)
+        {
+            return BadRequest(e.Message);
+        }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetLobby()
+    {
+        return Ok(await gameService.GetLobby());
+    }
+
+    [HttpPost]
+    [Authorize]
+    public async Task<IActionResult> SendRequest(Guid opponentId)
+    {
+        await gameService.SendRequest(opponentId);
+        return Ok();
+    }
+
+    [HttpPost]
+    [Authorize]
+    public async Task<IActionResult> DeclineRequest(Guid requesterId)
+    {
+        await gameService.DeclineRequest(requesterId);
+        return Ok();
+    }
+
+    [HttpGet]
+    [Authorize]
+    public IActionResult GetRequests()
+    {
+        return Ok(gameService.GetRequests());
+    }
+
+    [HttpPost]
+    [Authorize]
+    public async Task<IActionResult> AcceptRequest(Guid requesterId)
+    {
+        try
+        {
+            await gameService.AcceptRequest(requesterId);
+            return Ok();
+        }
+        catch (Exception e)
+        {
+            return BadRequest(e.Message);
+        }
+    }
+    
     
     [HttpGet]
     public async Task<IActionResult> GetActiveGames()

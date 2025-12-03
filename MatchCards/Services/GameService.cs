@@ -9,31 +9,20 @@ namespace MatchCards.Services;
 
 public class GameService(GameContext context, IHttpContextAccessor httpContextAccessor, IHubContext<GameHub> gameHub)
 {
-    private static readonly Queue<Guid> PlayerQueue = new();
+    private static readonly List<Guid> lobby = new();
+    private static readonly List<GameRequestModel> requests = new();
 
-    public async Task<GameState?> FindMatch()
+    public async Task JoinLobby()
     {
         Guid identifier = Guid.Parse(httpContextAccessor.HttpContext!.User.Claims.First(x => x.Type == System.Security.Claims.ClaimTypes.NameIdentifier).Value);
         
-        
+        if(!lobby.Contains(identifier)) lobby.Add(identifier);
+        /*
         
         Guid opponentIdentifier;
-        lock (PlayerQueue)
+        lock (Lobby)
         {
-            if (PlayerQueue.Contains(identifier))
-            {
-                return null;
-            }
-
-            if (PlayerQueue.Count > 0)
-            {
-                opponentIdentifier = PlayerQueue.Dequeue();
-            }
-            else
-            {
-                PlayerQueue.Enqueue(identifier);
-                return null;
-            }
+            if(Lob)
         }
         
         Guid gameId = Guid.NewGuid();
@@ -60,6 +49,103 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
         
         await gameHub.Groups.AddToGroupAsync(opponentIdentifier.ToString(), gameId.ToString());
         await gameHub.Groups.AddToGroupAsync(identifier.ToString(), gameId.ToString());
+        
+        return gameState;
+        */
+    }
+
+    public async Task LeaveLobby()
+    {
+        Guid identifier = Guid.Parse(httpContextAccessor.HttpContext!.User.Claims.First(x => x.Type == System.Security.Claims.ClaimTypes.NameIdentifier).Value);
+        
+        if(lobby.Contains(identifier)) lobby.Remove(identifier);
+        
+        requests.RemoveAll(x => x.requestId == identifier || x.opponentId == identifier);
+    }
+
+    public async Task<Player[]> GetLobby()
+    {
+        List<Player> players = new List<Player>();
+        foreach (Guid identifier in lobby)
+        {
+            Player? player = await context.Players.FindAsync(identifier);
+            if (player != null) players.Add(player);
+        }
+        return players.ToArray();
+    }
+
+    public async Task SendRequest(Guid opponentId)
+    {
+        Guid requesterId = Guid.Parse(httpContextAccessor.HttpContext!.User.Claims.First(x => x.Type == System.Security.Claims.ClaimTypes.NameIdentifier).Value);
+
+        if (!requests.Any(x => x.requestId == requesterId && x.opponentId == opponentId))
+        {
+            requests.Add(new GameRequestModel() { requestId = requesterId, opponentId = opponentId, requestDate = DateTime.UtcNow });
+            await gameHub.Clients.Client(opponentId.ToString()).SendAsync("ReceiveRequest");
+        }
+    }
+
+    public async Task DeclineRequest(Guid requesterId)
+    {
+        Guid opponentId = Guid.Parse(httpContextAccessor.HttpContext!.User.Claims.First(x => x.Type == System.Security.Claims.ClaimTypes.NameIdentifier).Value);
+        
+        if (requests.Any(x => x.requestId == requesterId && x.opponentId == opponentId))
+        {
+            requests.RemoveAll(x => x.requestId == requesterId && x.opponentId == opponentId);
+            await gameHub.Clients.Client(requesterId.ToString()).SendAsync("ReceiveDeclineRequest");
+        }
+    }
+
+    public GameRequestModel[] GetRequests()
+    {
+        Guid id = Guid.Parse(httpContextAccessor.HttpContext!.User.Claims.First(x => x.Type == System.Security.Claims.ClaimTypes.NameIdentifier).Value);
+
+        return requests.Where(x => x.opponentId  == id).ToArray();
+    }
+
+    public async Task<GameState> AcceptRequest(Guid requesterId)
+    {
+        Guid player2 = Guid.Parse(httpContextAccessor.HttpContext!.User.Claims.First(x => x.Type == System.Security.Claims.ClaimTypes.NameIdentifier).Value);
+
+        GameRequestModel? request = requests.FirstOrDefault(x => x.requestId == requesterId && x.opponentId == player2);
+        if(request == null) throw new Exception("Request not found");
+        if (DateTime.UtcNow - request.requestDate > TimeSpan.FromMinutes(5))
+        {
+            requests.Remove(request);
+            throw new Exception("Request expired");
+        }
+
+        if (context.GameStates.Any(x => !x.IsGameOver && (x.Player1Id == requesterId || x.Player2Id == requesterId)))
+        {
+            requests.Remove(request);
+            throw new Exception("Player already in a game.");
+        }
+        
+        
+        Guid gameId = Guid.NewGuid();
+        
+        GameState gameState = new GameState
+        {
+            Id = gameId,
+            Player1Id = requesterId,
+            Player2Id = player2,
+            CurrentTurnId = player2,
+            IsGameOver = false,
+            IsSinglePlayer = false,
+            GameStartTime = DateTime.UtcNow,
+            Player1Score = 0,
+            Player2Score = 0
+        };
+
+        context.GameStates.Add(gameState);
+        await context.SaveChangesAsync();
+
+        await GenerateCards(gameId);
+        
+        await gameHub.Groups.AddToGroupAsync(player2.ToString(), gameId.ToString());
+        await gameHub.Groups.AddToGroupAsync(requesterId.ToString(), gameId.ToString());
+        
+        await gameHub.Clients.Group(gameId.ToString()).SendAsync("GameStarted", gameId);
         
         return gameState;
     }
@@ -140,6 +226,19 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
         }
         
         await context.SaveChangesAsync();
+
+        if (gameState.IsGameOver)
+        {
+            try
+            {
+                await gameHub.Groups.RemoveFromGroupAsync(gameState.Player1Id.ToString(), gameState.Id.ToString());
+                if(gameState.Player2Id != null) await gameHub.Groups.RemoveFromGroupAsync(gameState.Player2Id.ToString(), gameState.Id.ToString());
+            }
+            catch (Exception e)
+            {
+                
+            }
+        }
     }
     
     private async Task GenerateCards(Guid gameId)

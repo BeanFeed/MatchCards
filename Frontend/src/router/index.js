@@ -7,6 +7,11 @@ const router = createRouter({
       path: '/',
         name: 'index',
         component: () => import('@/views/index.vue')
+    },
+    {
+      path: '/game/:gameId',
+        name: 'game',
+        component: () => import('@/views/game.vue')
     }
   ],
 })

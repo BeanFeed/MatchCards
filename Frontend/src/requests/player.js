@@ -16,3 +16,9 @@ export async function createPlayer(playerName) {
         timeout: 5000
     });
 }
+
+export async function myGames() {
+    return await fetch(`${backendUrl}/player/mygames`, {
+        credentials: "include",
+    });
+}

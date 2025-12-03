@@ -21,9 +21,10 @@
     </div>
     <h2 v-else>No active games</h2>
     <h2 class="mb-2 text-lg font-bold">Previous Games</h2>
-    <div>
-
+    <div v-if="previousGames.length > 0" class="flex flex-wrap gap-2">
+      <GameCard v-for="game in previousGames" :game="game"/>
     </div>
+    <h2 v-else>No previous games</h2>
   </template>
   <h2 class="text-center text-xl font-bold mt-5" v-else>You haven't played any games yet</h2>
 </div>
