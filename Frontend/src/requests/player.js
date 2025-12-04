@@ -3,14 +3,14 @@ import {fetchWithTimeout} from "@/main.js";
 
 export async function getMe() {
 
-    return await fetchWithTimeout(`${backendUrl}/player/me`, {
+    return await fetchWithTimeout(`${backendUrl}/api/player/me`, {
         credentials: "include",
         timeout: 5000
     });
 }
 
 export async function createPlayer(playerName) {
-    return await fetch(encodeURI(`${backendUrl}/player/createplayer?name=${playerName}`), {
+    return await fetch(encodeURI(`${backendUrl}/api/player/createplayer?name=${playerName}`), {
         credentials: "include",
         method: "POST",
         timeout: 5000
@@ -18,7 +18,7 @@ export async function createPlayer(playerName) {
 }
 
 export async function myGames() {
-    return await fetch(`${backendUrl}/player/mygames`, {
+    return await fetch(`${backendUrl}/api/player/mygames`, {
         credentials: "include",
     });
 }

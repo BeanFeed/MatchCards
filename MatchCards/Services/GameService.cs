@@ -17,6 +17,8 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
         Guid identifier = Guid.Parse(httpContextAccessor.HttpContext!.User.Claims.First(x => x.Type == System.Security.Claims.ClaimTypes.NameIdentifier).Value);
         
         if(!lobby.Contains(identifier)) lobby.Add(identifier);
+        
+        await gameHub.Clients.All.SendAsync("LobbyChange");
         /*
         
         Guid opponentIdentifier;
@@ -61,6 +63,15 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
         if(lobby.Contains(identifier)) lobby.Remove(identifier);
         
         requests.RemoveAll(x => x.requestId == identifier || x.opponentId == identifier);
+        
+        await gameHub.Clients.All.SendAsync("LobbyChange");
+    }
+
+    public async Task RemoveFromLobby(Guid id)
+    {
+        lobby.RemoveAll(x => x == id);
+        await gameHub.Clients.All.SendAsync("LobbyChange");
+
     }
 
     public async Task<Player[]> GetLobby()
@@ -81,7 +92,7 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
         if (!requests.Any(x => x.requestId == requesterId && x.opponentId == opponentId))
         {
             requests.Add(new GameRequestModel() { requestId = requesterId, opponentId = opponentId, requestDate = DateTime.UtcNow });
-            await gameHub.Clients.Client(opponentId.ToString()).SendAsync("ReceiveRequest");
+            await gameHub.Clients.Client(GameHub.ConnectedPlayers[opponentId]).SendAsync("ReceiveRequest");
         }
     }
 
@@ -92,15 +103,49 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
         if (requests.Any(x => x.requestId == requesterId && x.opponentId == opponentId))
         {
             requests.RemoveAll(x => x.requestId == requesterId && x.opponentId == opponentId);
-            await gameHub.Clients.Client(requesterId.ToString()).SendAsync("ReceiveDeclineRequest");
+            if(GameHub.ConnectedPlayers.TryGetValue(requesterId, out var player)) await gameHub.Clients.Client(player).SendAsync("ReceiveDeclineRequest");
+            if(GameHub.ConnectedPlayers.TryGetValue(opponentId, out var opponent)) await gameHub.Clients.Client(opponent).SendAsync("ReceiveRequest");
         }
     }
 
-    public GameRequestModel[] GetRequests()
+    public async Task<GamePlayerRequestModel[]> GetRequests()
     {
         Guid id = Guid.Parse(httpContextAccessor.HttpContext!.User.Claims.First(x => x.Type == System.Security.Claims.ClaimTypes.NameIdentifier).Value);
 
-        return requests.Where(x => x.opponentId  == id).ToArray();
+        GameRequestModel[] myRequests = requests.Where(x => x.opponentId == id).ToArray();
+        
+        List<GamePlayerRequestModel> result = new List<GamePlayerRequestModel>();
+        foreach (var request in myRequests)
+        {
+            Player? requester = await context.Players.FindAsync(request.requestId);
+            if (requester == null)
+            {
+                requests.Remove(request);
+                continue;
+            }
+            Player? opponent = await context.Players.FindAsync(request.opponentId);
+            if (opponent == null)
+            {
+                requests.Remove(request);
+                continue;
+            }
+
+            if (DateTime.UtcNow - request.requestDate > TimeSpan.FromMinutes(5))
+            {
+                requests.Remove(request);
+                continue;
+            }
+            
+            result.Add(new GamePlayerRequestModel()
+            {
+                Requester = requester,
+                Opponent = opponent,
+                RequestDate = request.requestDate
+            });
+
+        }
+
+        return result.ToArray();
     }
 
     public async Task<GameState> AcceptRequest(Guid requesterId)
@@ -120,7 +165,10 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
             requests.Remove(request);
             throw new Exception("Player already in a game.");
         }
-        
+        requests.Remove(request);
+
+        await RemoveFromLobby(requesterId);
+        await RemoveFromLobby(player2);
         
         Guid gameId = Guid.NewGuid();
         
@@ -142,8 +190,8 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
 
         await GenerateCards(gameId);
         
-        await gameHub.Groups.AddToGroupAsync(player2.ToString(), gameId.ToString());
-        await gameHub.Groups.AddToGroupAsync(requesterId.ToString(), gameId.ToString());
+        if(GameHub.ConnectedPlayers.TryGetValue(player2, out var player)) await gameHub.Groups.AddToGroupAsync(player, gameId.ToString());
+        if(GameHub.ConnectedPlayers.TryGetValue(requesterId, out var requester)) await gameHub.Groups.AddToGroupAsync(requester, gameId.ToString());
         
         await gameHub.Clients.Group(gameId.ToString()).SendAsync("GameStarted", gameId);
         
@@ -153,6 +201,13 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
     public async Task<GameState[]> GetActiveGames()
     {
         return await context.GameStates.Where(x => !x.IsGameOver).ToArrayAsync();
+    }
+    
+    public async Task<GameState> GetGameState(Guid gameId)
+    {
+        GameState? gameState = await context.GameStates.Include(x => x.Cards).FirstOrDefaultAsync(x => x.Id == gameId);
+        if (gameState == null) throw new Exception("Game not found.");
+        return gameState;
     }
 
     public async Task<Score[]> TopTenScores()
@@ -173,8 +228,19 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
         
         if (!gameState.IsSinglePlayer)
         {
-            if(card.PlayerId == gameState.Player1Id) await gameHub.Clients.User(gameState.Player2Id.ToString()).SendAsync("CardFlip", card.CardId);
-            else await gameHub.Clients.User(gameState.Player1Id.ToString()).SendAsync("CardFlip", card.CardId);
+            try
+            {
+                if (card.PlayerId == gameState.Player1Id)
+                    await gameHub.Clients.User(GameHub.ConnectedPlayers[gameState.Player2Id!.Value])
+                        .SendAsync("CardFlip", card.CardId);
+                else
+                    await gameHub.Clients.User(GameHub.ConnectedPlayers[gameState.Player1Id])
+                        .SendAsync("CardFlip", card.CardId);
+            }
+            catch (Exception e)
+            {
+                
+            }
         }
         
         if (gameState.CurrentFlippedCardId == null)
@@ -231,8 +297,9 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
         {
             try
             {
-                await gameHub.Groups.RemoveFromGroupAsync(gameState.Player1Id.ToString(), gameState.Id.ToString());
-                if(gameState.Player2Id != null) await gameHub.Groups.RemoveFromGroupAsync(gameState.Player2Id.ToString(), gameState.Id.ToString());
+                await gameHub.Groups.RemoveFromGroupAsync(GameHub.ConnectedPlayers[gameState.Player1Id], gameState.Id.ToString());
+                if(gameState.Player2Id != null) await gameHub.Groups.RemoveFromGroupAsync(GameHub.ConnectedPlayers[gameState.Player2Id!.Value], gameState.Id.ToString());
+                
             }
             catch (Exception e)
             {
@@ -241,24 +308,27 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
         }
     }
     
+// File: `MatchCards/Services/GameService.cs`
     private async Task GenerateCards(Guid gameId)
     {
+        // create 24 values: two of each 1..12
         List<int> cardValues = new List<int>();
-        // Generate pairs of values from 1 to 12
-        for (int i = 0; i < 12; i++)
+        for (int i = 1; i <= 12; i++)
         {
-            cardValues[i * 2] = i + 1;
-            cardValues[i * 2 + 1] = i + 1;
+            cardValues.Add(i);
+            cardValues.Add(i);
         }
-
+    
+        Random random = new Random();
+    
         for (int x = 0; x < 6; x++)
         {
             for (int y = 0; y < 4; y++)
             {
-                Random random = new Random();
-                int faceIndex = random.Next(cardValues.Count - 1);
-                int index = cardValues[faceIndex];
+                int faceIndex = random.Next(cardValues.Count); // use Count, not Count - 1
+                int value = cardValues[faceIndex];
                 cardValues.RemoveAt(faceIndex);
+    
                 CardState newCard = new CardState()
                 {
                     Id = Guid.NewGuid(),
@@ -266,14 +336,14 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
                     Column = x,
                     Row = y,
                     IsFaceUp = false,
-                    CardIndex = index
+                    CardIndex = value
                 };
-                
+    
                 await context.CardStates.AddAsync(newCard);
             }
         }
-        
+    
         await context.SaveChangesAsync();
-        
     }
+    
 }

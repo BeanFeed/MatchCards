@@ -1,17 +1,24 @@
 <script setup lang="js">
-  import {createPlayer, getMe} from "@/requests/player.js";
-  import {onMounted, onUnmounted, ref} from "vue";
+import {createPlayer, getMe} from "@/requests/player.js";
+import {onMounted, onUnmounted, ref} from "vue";
 
-  import {useToast} from "@nuxt/ui/composables";
-  import {useUserStore} from "@/stores/user.js";
-  import CurrentUserGames from "@/components/CurrentUserGames.vue";
+import {useToast} from "@nuxt/ui/composables";
+import {useUserStore} from "@/stores/user.js";
+import CurrentUserGames from "@/components/CurrentUserGames.vue";
+import {useRouter} from "vue-router";
+import {useSignalRStore} from "@/stores/signalr.js";
+import {getLobby} from "@/requests/game.js";
 
-  let toast;
+let toast;
   const isAuthed = ref(true);
   const newName = ref("");
   const isServerReachable = ref(true);
 
   const userStore = useUserStore();
+  const signalr = useSignalRStore();
+  const router = useRouter();
+
+  const lobby = ref([]);
 
   const testGameStates = ref([
     {
@@ -126,6 +133,8 @@
     try {
       const res = await createPlayer(newName.value);
       await getUser();
+      await signalr.stop();
+      await signalr.start();
     } catch (error) {
       toast.add({
         title: "Error",
@@ -146,6 +155,10 @@
         });
       })
       isAuthed.value = false;
+      userStore.setUser({
+        id: null,
+        name: null
+      })
     } else {
       const data = await res.json();
       userStore.setUser(data.user);
@@ -156,9 +169,20 @@
     }
   }
 
+  async function fetchLobby() {
+    const res = await getLobby();
+    if(res.ok) {
+      lobby.value = await res.json();
+    }
+  }
+
   const isBlock = ref(false);
 
   onMounted(async () => {
+
+    updateIsBlock();
+    window.addEventListener("resize", updateIsBlock);
+
     toast = useToast();
     try {
       await getUser();
@@ -171,12 +195,21 @@
       // });
     }
 
-    updateIsBlock();
-    window.addEventListener("resize", updateIsBlock);
+    if(signalr.connected) {
+      signalr.connection.on("LobbyChange", async () => {
+        console.log("Lobby changed, fetching new data");
+        await fetchLobby();
+      });
+    }
+    await fetchLobby();
   })
 
   onUnmounted(() => {
     window.removeEventListener("resize", updateIsBlock);
+
+    if(signalr.connected) {
+      signalr.connection.off("LobbyChange");
+    }
   });
 
   function updateIsBlock() {
@@ -188,7 +221,7 @@
   <div class="flex flex-col min-h-screen" :class="!isAuthed ? 'h-screen' : ''">
     <Navbar/>
     <div class="px-4 pt-4">
-      <UButton :block="isBlock">Find Match</UButton>
+      <UButton :block="isBlock" @click="router.push('/lobby')">Join Game Lobby ({{lobby.length}} Players)</UButton>
     </div>
     <div class="flex flex-col items-center justify-center h-full p-5">
       <template v-if="isServerReachable">
@@ -204,7 +237,7 @@
           </UCard>
         </template>
         <template v-else>
-          <CurrentUserGames :games="testGameStates"/>
+          <CurrentUserGames :games="userStore.games"/>
         </template>
       </template>
       <template v-else>
@@ -215,12 +248,5 @@
 </template>
 
 <style scoped>
-  .shadow-glow {
-    box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.2);
-  }
 
-  .navbar > div {
-    display: flex;
-    align-items: center;
-  }
 </style>

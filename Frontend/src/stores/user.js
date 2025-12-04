@@ -25,4 +25,7 @@ export const useUserStore = defineStore('user', () => {
     scores.value = newScores;
   }
   return { user, games, scores, socket, setUser, setGames, setScores }
-})
+},
+    {
+      persist: true
+    })

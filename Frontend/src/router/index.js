@@ -9,6 +9,11 @@ const router = createRouter({
         component: () => import('@/views/index.vue')
     },
     {
+      path: '/lobby',
+        name: 'lobby',
+        component: () => import('@/views/lobby.vue')
+    },
+    {
       path: '/game/:gameId',
         name: 'game',
         component: () => import('@/views/game.vue')

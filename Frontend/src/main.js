@@ -5,6 +5,8 @@ import './assets/main.css'
 
 import App from './App.vue'
 import router from './router'
+import {useSignalRStore} from "@/stores/signalr.js";
+import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 
 const app = createApp(App)
 
@@ -22,10 +24,16 @@ export async function fetchWithTimeout(resource, options = {}) {
 
     return response;
 }
-
-app.use(createPinia())
+const pinia = createPinia();
+pinia.use(piniaPluginPersistedstate)
+app.use(pinia)
 app.use(router)
 app.use(ui)
 
 
 app.mount('#app')
+
+let signalr = useSignalRStore();
+signalr.start();
+
+export const globalToast = useToast();

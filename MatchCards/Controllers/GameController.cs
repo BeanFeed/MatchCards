@@ -1,3 +1,4 @@
+using MatchCards.Models;
 using MatchCards.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -62,9 +63,9 @@ public class GameController(GameService gameService) : Controller
 
     [HttpGet]
     [Authorize]
-    public IActionResult GetRequests()
+    public async Task<IActionResult> GetRequests()
     {
-        return Ok(gameService.GetRequests());
+        return Ok(await gameService.GetRequests());
     }
 
     [HttpPost]
@@ -87,6 +88,19 @@ public class GameController(GameService gameService) : Controller
     public async Task<IActionResult> GetActiveGames()
     {
         return Ok(await gameService.GetActiveGames());
+    }
+    
+    [HttpGet]
+    public async Task<IActionResult> GetGameState(Guid gameStateId)
+    {
+        try
+        {
+            return Ok(await gameService.GetGameState(gameStateId));
+        }
+        catch (Exception e)
+        {
+            return BadRequest(e.Message);
+        }
     }
 
     [HttpGet]
