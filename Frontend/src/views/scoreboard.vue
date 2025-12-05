@@ -101,7 +101,7 @@ onUnmounted(() => {
     <Navbar/>
     <div class="h-full w-full flex justify-center gap-5">
       <div class="w-full flex justify-end">
-        <div ref="activeList" class="flex flex-col w-min items-center gap-4 max-h-full overflow-y-scroll pb-20">
+        <div ref="activeList" class="flex flex-col w-min items-center gap-4 max-h-full overflow-y-scroll pb-20 px-1">
           <h2 class="whitespace-nowrap pt-4">Active Games</h2>
           <ScoreboardGameCard v-if="activeGames" v-for="game in activeGames" :key="game.id" :game="game"/>
         </div>
@@ -114,7 +114,7 @@ onUnmounted(() => {
       </div>
     </div>
     <Footer/>
-    <div class="absolute bottom-0 right-0 p-4">
+    <div class="absolute bottom-0 right-0 p-4 bg-neutral-900 rounded-lg">
       <p class="text-center text-3xl font-bold pb-2">Scan to play game</p>
       <QrcodeVue :value="origin" :size="300" level="H" foreground="#c27aff" background="#00000000" />
     </div>

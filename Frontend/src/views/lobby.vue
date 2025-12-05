@@ -72,12 +72,12 @@ onUnmounted(async () => {
   <div class="w-full px-5 flex flex-col h-full pt-4 relative">
     <UButton @click="router.push('/')" class="w-max">Home</UButton>
     <h2 class="mb-2 text-lg font-bold">Players</h2>
-    <div class="flex flex-wrap gap-2 h-full overflow-y-auto">
+    <div class="flex flex-wrap gap-2 h-full overflow-y-auto p-1">
       <LobbyPlayer v-if="lobby.length > 0"  v-for="player in lobby" :player="player"/>
       <h2 v-else>No players in lobby</h2>
     </div>
     <h2 class="mb-2 text-lg font-bold">Requests</h2>
-    <div class="flex flex-wrap gap-2 h-full overflow-y-auto">
+    <div class="flex flex-wrap gap-2 h-full overflow-y-auto p-1">
       <RequestCard v-if="requests.length > 0" v-for="request in requests" :request="request"/>
       <h2 v-else>No requests</h2>
     </div>

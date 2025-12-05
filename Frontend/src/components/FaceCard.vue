@@ -1,5 +1,5 @@
 <script setup lang="js">
-import { ref } from "vue";
+import {ref, watch} from "vue";
 
 const props = defineProps({
   card: {
@@ -34,6 +34,16 @@ function toggleFlip() {
   }
 
 }
+
+watch(props.card, (newCard) => {
+  if(props.card.isFaceUp) {
+    flipped.value = false;
+    showImage.value = true;
+  } else {
+    flipped.value = true;
+    showImage.value = false;
+  }
+})
 </script>
 
 
