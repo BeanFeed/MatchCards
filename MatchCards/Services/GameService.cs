@@ -72,13 +72,18 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
         GameState[] games = await context.GameStates.Where(x => x.Player1Id == player || x.Player2Id == player).ToArrayAsync();
         foreach (var game in games)
         {
-            try
+            foreach (SignalConnection connection in GameHub.ConnectedPlayers.Where(x => x.PlayerId == player))
             {
-                await gameHub.Groups.AddToGroupAsync(GameHub.ConnectedPlayers[player], game.Id.ToString());
-            }
-            catch (Exception e)
-            {
-                
+                try
+                {
+                    await gameHub.Groups.AddToGroupAsync(connection.ConnectionId, game.Id.ToString());
+
+                }
+                catch (Exception e)
+                {
+                        
+                }
+
             }
         }
     }
@@ -108,8 +113,15 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
         if (!requests.Any(x => x.requestId == requesterId && x.opponentId == opponentId))
         {
             requests.Add(new GameRequestModel() { requestId = requesterId, opponentId = opponentId, requestDate = DateTime.UtcNow });
-            
-            if(GameHub.ConnectedPlayers.TryGetValue(opponentId, out var player)) await gameHub.Clients.Client(player).SendAsync("ReceiveRequest");
+            SignalConnection[] playerConnections = GameHub.ConnectedPlayers.Where(x => x.PlayerId == opponentId).ToArray();
+            if (playerConnections.Length > 0)
+            {
+                foreach (SignalConnection connection in playerConnections)
+                {
+                    await gameHub.Clients.Client(connection.ConnectionId).SendAsync("ReceiveRequest");
+
+                }
+            }
         }
     }
 
@@ -120,8 +132,16 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
         if (requests.Any(x => x.requestId == requesterId && x.opponentId == opponentId))
         {
             requests.RemoveAll(x => x.requestId == requesterId && x.opponentId == opponentId);
-            if(GameHub.ConnectedPlayers.TryGetValue(requesterId, out var player)) await gameHub.Clients.Client(player).SendAsync("ReceiveDeclineRequest");
-            if(GameHub.ConnectedPlayers.TryGetValue(opponentId, out var opponent)) await gameHub.Clients.Client(opponent).SendAsync("ReceiveRequest");
+            SignalConnection[] requesterConnections = GameHub.ConnectedPlayers.Where(x => x.PlayerId == requesterId).ToArray();
+            foreach (SignalConnection connection in requesterConnections)
+            {
+                await gameHub.Clients.Client(connection.ConnectionId).SendAsync("ReceiveDeclineRequest");
+            }
+            SignalConnection[] playerConnections = GameHub.ConnectedPlayers.Where(x => x.PlayerId == opponentId).ToArray();
+            foreach (SignalConnection connection in playerConnections)
+            {
+                await gameHub.Clients.Client(connection.ConnectionId).SendAsync("ReceiveDeclineRequest");
+            }
         }
     }
 
@@ -206,9 +226,16 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
         await context.SaveChangesAsync();
 
         await GenerateCards(gameId);
-        
-        if(GameHub.ConnectedPlayers.TryGetValue(player2, out var player)) await gameHub.Groups.AddToGroupAsync(player, gameId.ToString());
-        if(GameHub.ConnectedPlayers.TryGetValue(requesterId, out var requester)) await gameHub.Groups.AddToGroupAsync(requester, gameId.ToString());
+        SignalConnection[] playerConnections = GameHub.ConnectedPlayers.Where(x => x.PlayerId == player2).ToArray();
+        foreach (SignalConnection connection in playerConnections)
+        {
+            await gameHub.Groups.AddToGroupAsync(connection.ConnectionId, gameId.ToString());
+        }
+        SignalConnection[] opponentConnections = GameHub.ConnectedPlayers.Where(x => x.PlayerId == requesterId).ToArray();
+        foreach (SignalConnection connection in opponentConnections)
+        {
+            await gameHub.Groups.AddToGroupAsync(connection.ConnectionId, gameId.ToString());
+        }
 
         try
         {
@@ -307,7 +334,6 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
                 }
             }
             
-            await gameHub.Clients.Group(gameState.Id.ToString()).SendAsync("GameStateUpdate", gameState);
         }
         else
         {
@@ -317,8 +343,9 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
             
             if(!gameState.IsSinglePlayer) gameState.CurrentTurnId = gameState.Player1Id == card.PlayerId ? gameState.Player2Id!.Value : gameState.Player1Id;
             
-            await gameHub.Clients.Group(gameState.Id.ToString()).SendAsync("GameStateUpdate", gameState);
         }
+        await gameHub.Clients.Group(gameState.Id.ToString()).SendAsync("GameStateUpdate", gameState);
+
         
         await context.SaveChangesAsync();
         
@@ -329,8 +356,21 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
         {
             try
             {
-                await gameHub.Groups.RemoveFromGroupAsync(GameHub.ConnectedPlayers[gameState.Player1Id], gameState.Id.ToString());
-                if(gameState.Player2Id != null) await gameHub.Groups.RemoveFromGroupAsync(GameHub.ConnectedPlayers[gameState.Player2Id!.Value], gameState.Id.ToString());
+                SignalConnection[] player1Connections = GameHub.ConnectedPlayers.Where(x => x.PlayerId == gameState.Player1Id).ToArray();
+                foreach (SignalConnection connection in player1Connections)
+                {
+                    await gameHub.Groups.RemoveFromGroupAsync(connection.ConnectionId, gameState.Id.ToString());
+
+                }
+
+                if (gameState.Player2Id != null)
+                {
+                    SignalConnection[] player2Connections = GameHub.ConnectedPlayers.Where(x => x.PlayerId == gameState.Player2Id).ToArray();
+                    foreach (SignalConnection connection in player2Connections)
+                    {
+                        await gameHub.Groups.RemoveFromGroupAsync(connection.ConnectionId, gameState.Id.ToString());
+                    }
+                }
                 
             }
             catch (Exception e)
