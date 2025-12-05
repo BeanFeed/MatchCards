@@ -102,14 +102,16 @@ onUnmounted(() => {
     <div class="h-full w-full flex justify-center gap-5">
       <div class="w-full flex justify-end">
         <div ref="activeList" class="flex flex-col w-min items-center gap-4 max-h-full overflow-y-scroll pb-20 px-1">
-          <h2 class="whitespace-nowrap pt-4">Active Games</h2>
-          <ScoreboardGameCard v-if="activeGames" v-for="game in activeGames" :key="game.id" :game="game"/>
+          <h2 class="whitespace-nowrap pt-4 font-bold text-xl">Active Games</h2>
+          <ScoreboardGameCard v-if="activeGames && activeGames.length > 0" v-for="game in activeGames" :key="game.id" :game="game"/>
+          <p v-else>No active games</p>
         </div>
       </div>
       <div class="w-full flex justify-start">
         <div ref="recentList" class="flex flex-col w-min items-center gap-4 px-1 h-min max-h-full overflow-y-scroll pb-20">
-          <h2 class="whitespace-nowrap pt-4">Recent Games</h2>
-          <ScoreboardGameCard v-if="recentGames" v-for="game in recentGames" :key="game.id" :game="game"/>
+          <h2 class="whitespace-nowrap pt-4 font-bold text-xl">Recent Games</h2>
+          <ScoreboardGameCard v-if="recentGames && recentGames.length > 0" v-for="game in recentGames" :key="game.id" :game="game"/>
+          <p v-else>No recent games</p>
         </div>
       </div>
     </div>

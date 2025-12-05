@@ -1,6 +1,6 @@
 <script setup lang="js">
 import {createPlayer, getMe} from "@/requests/player.js";
-import {onMounted, onUnmounted, ref} from "vue";
+import {computed, onMounted, onUnmounted, ref} from "vue";
 
 import {useToast} from "@nuxt/ui/composables";
 import {useUserStore} from "@/stores/user.js";
@@ -132,9 +132,18 @@ let toast;
   async function signup() {
     try {
       const res = await createPlayer(newName.value);
-      await getUser();
-      await signalr.stop();
-      await signalr.start();
+      if(res.ok) {
+        await getUser();
+        await signalr.stop();
+        await signalr.start();
+      } else {
+        const data = await res.text();
+        toast.add({
+          title: res.statusText,
+          description: data,
+        });
+      }
+
     } catch (error) {
       toast.add({
         title: "Error",
@@ -178,6 +187,13 @@ let toast;
   }
 
   const isBlock = ref(false);
+
+  const textLimitStyle = computed(() => {
+    let toRet = "";
+    if(newName.value.length >= 10) toRet += "opacity-100 ";
+    if(newName.value.length >= 15) toRet += "text-red-500";
+    return toRet;
+  })
 
   onMounted(async () => {
 
@@ -232,7 +248,10 @@ let toast;
           <UCard>
             <div class="grid gap-4">
               <p class="text-center">Please enter your name</p>
-              <UInput v-model="newName" class="w-full" placeholder="Name"/>
+              <div>
+                <UInput v-model="newName" class="w-full" style="font-size: 16px;" placeholder="Name" maxlength="20"/>
+                <p :class="textLimitStyle" class="text-sm mt-1 opacity-0 transition">{{newName.length}}/20</p>
+              </div>
               <UButton @click="signup" block>Continue</UButton>
             </div>
           </UCard>
