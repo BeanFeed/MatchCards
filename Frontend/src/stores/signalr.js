@@ -36,6 +36,7 @@ export const useSignalRStore = defineStore('signalr', {
             if (this.connection) {
                 await this.connection.stop();
                 this.connected = false
+                this.connection = null
                 console.log("SignalR disconnected")
             }
         }

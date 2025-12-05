@@ -128,6 +128,13 @@ let toast;
     }
   ]);
 
+  function registerListeners() {
+    signalr.connection.on("LobbyChange", async () => {
+      console.log("Lobby changed, fetching new data");
+      await fetchLobby();
+    });
+  }
+
 
   async function signup() {
     try {
@@ -136,6 +143,7 @@ let toast;
         await getUser();
         await signalr.stop();
         await signalr.start();
+        registerListeners()
       } else {
         const data = await res.text();
         toast.add({
@@ -151,6 +159,8 @@ let toast;
       });
     }
   }
+
+
 
   async function getUser() {
     const res = await getMe();
@@ -213,10 +223,7 @@ let toast;
     }
 
     if(signalr.connected) {
-      signalr.connection.on("LobbyChange", async () => {
-        console.log("Lobby changed, fetching new data");
-        await fetchLobby();
-      });
+      registerListeners()
     }
     await fetchLobby();
   })
@@ -235,7 +242,7 @@ let toast;
 </script>
 
 <template>
-  <div class="flex flex-col min-h-screen" :class="!isAuthed ? 'h-screen' : ''">
+  <div class="flex flex-col min-h-dvh" :class="!isAuthed ? 'h-dvh' : ''">
     <Navbar/>
     <div class="px-4 pt-4" v-if="isServerReachable && isAuthed">
       <UButton :block="isBlock" @click="router.push('/lobby')">Join Game Lobby ({{lobby.length}} Players)</UButton>

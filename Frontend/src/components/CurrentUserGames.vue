@@ -39,7 +39,7 @@ import {getMe} from "@/requests/player.js";
 </script>
 
 <template>
-<div class="w-screen px-5">
+<div class="w-dvh px-5">
   <h2 class="mb-2 text-lg font-bold">Active Games</h2>
   <template v-if="games.length > 0">
     <div v-if="games.filter(x => !x.isGameOver).length > 0" class="flex flex-wrap gap-2">

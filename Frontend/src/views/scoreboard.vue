@@ -97,7 +97,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col h-screen overflow-hidden">
+  <div class="flex flex-col h-dvh overflow-hidden">
     <Navbar/>
     <div class="h-full w-full flex justify-center gap-5">
       <div class="w-full flex justify-end">

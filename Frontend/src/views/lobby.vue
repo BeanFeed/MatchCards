@@ -67,7 +67,7 @@ onUnmounted(async () => {
 </script>
 
 <template>
-<div class="flex flex-col h-screen">
+<div class="flex flex-col h-dvh">
   <Navbar/>
   <div class="w-full px-5 flex flex-col h-full pt-4 relative">
     <UButton @click="router.push('/')" class="w-max">Home</UButton>

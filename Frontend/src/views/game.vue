@@ -162,7 +162,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col h-screen overflow-hidden">
+  <div class="flex flex-col h-dvh overflow-hidden">
     <GameScoreboard class="app" v-if="gameState" :game-state="gameState" />
     <div class="app h-full overflow-hidden flex justify-center items-center my-2" ref="gridContainer">
       <div class="grid grid-cols-5 grid-rows-4 w-max h-max" ref="gridBox" :style="gridStyle">

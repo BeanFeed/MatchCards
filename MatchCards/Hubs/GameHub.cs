@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace MatchCards.Hubs;
 
-[Authorize]
 public class GameHub(GameService gameService) : Hub
 {
     public static readonly List<SignalConnection> ConnectedPlayers = new();
@@ -30,6 +29,8 @@ public class GameHub(GameService gameService) : Hub
         ConnectedPlayers.RemoveAll(x => x.ConnectionId == Context.ConnectionId);
         if((await gameService.GetLobby()).Any(x => x.Id == id)) await gameService.RemoveFromLobby(id);
     }
+    
+    [Authorize]
 
     public async Task FlipCard(FlipCard flipCard)
     {
