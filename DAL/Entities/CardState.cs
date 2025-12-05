@@ -11,8 +11,7 @@ public class CardState
     public Guid GameStateId { get; set; }
     public int CardIndex { get; set; }
     public bool IsFaceUp { get; set; }
-    public int Column { get; set; }
-    public int Row { get; set; }
+    public int Position { get; set; }
     [JsonIgnore]
     
     public virtual GameState GameState { get; set; }

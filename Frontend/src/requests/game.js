@@ -19,6 +19,10 @@ export async function getActiveGames() {
     return await fetch(`${backendUrl}/api/game/getactivegames`);
 }
 
+export async function getRecentGames() {
+    return await fetch(`${backendUrl}/api/game/getrecentgames`);
+}
+
 export async function joinLobby() {
     return await fetch(`${backendUrl}/api/game/joinlobby`, {
         credentials: "include",

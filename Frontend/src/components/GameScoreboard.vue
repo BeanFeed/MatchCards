@@ -2,6 +2,7 @@
 
 import {computed} from "vue";
 import {useUserStore} from "@/stores/user.js";
+import {useRouter} from "vue-router";
 
 const props = defineProps({
   gameState: {
@@ -9,6 +10,8 @@ const props = defineProps({
     required: true
   },
 });
+
+const router = useRouter();
 
 const userStore = useUserStore();
 
@@ -39,12 +42,12 @@ const opponentScore = computed(() => {
   <div class="bg-neutral-900 shadow-glow">
     <div class="px-2 pt-2 grid grid-cols-5 justify-between bar h-min sticky top-0 w-full">
       <div class="w-full">
-        <UButton>Back</UButton>
+        <UButton @click="router.push('/')">Home</UButton>
       </div>
       <div class="w-full" v-if="true">
-        <div class="flex w-full">
+        <div class="flex w-full justify-end">
           <p :class="gameState.currentTurn.id === userStore.user.id ? 'bg-primary-400 text-neutral-900' : 'bg-neutral-800 text-neutral-600'" class="h-min w-max text-center whitespace-nowrap rounded-md px-1">Your Turn</p>
-          <p class="w-full text-right whitespace-nowrap pl-1">You &nbsp;&nbsp;{{playerScore}}</p>
+          <p class="text-right whitespace-nowrap pl-1">You &nbsp;&nbsp;{{playerScore}}</p>
         </div>
       </div>
       <div class="w-full">

@@ -82,12 +82,35 @@ public class GameController(GameService gameService) : Controller
             return BadRequest(e.Message);
         }
     }
+
+    [HttpPost]
+    [Authorize]
+    public async Task<IActionResult> FlipCard(FlipCard flipCard)
+    {
+        try
+        {
+            Guid playerId = Guid.Parse(HttpContext.User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+            if (playerId != flipCard.PlayerId) return BadRequest("You are not authorized to perform this action.");
+            await gameService.FlipCard(flipCard);
+            return Ok();
+        }
+        catch (Exception e)
+        {
+            return BadRequest(e.Message);
+        }
+    }
     
     
     [HttpGet]
     public async Task<IActionResult> GetActiveGames()
     {
         return Ok(await gameService.GetActiveGames());
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetRecentGames()
+    {
+        return Ok(await gameService.GetRecentGames());
     }
     
     [HttpGet]

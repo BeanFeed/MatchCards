@@ -149,6 +149,7 @@ let toast;
     if(!res.ok) {
       if(res.status === 401) isAuthed.value = false;
       else res.text().then(data => {
+        if(data === 'Player not found.') return
         toast.add({
           title: res.statusText,
           description: data,
@@ -220,7 +221,7 @@ let toast;
 <template>
   <div class="flex flex-col min-h-screen" :class="!isAuthed ? 'h-screen' : ''">
     <Navbar/>
-    <div class="px-4 pt-4">
+    <div class="px-4 pt-4" v-if="isServerReachable && isAuthed">
       <UButton :block="isBlock" @click="router.push('/lobby')">Join Game Lobby ({{lobby.length}} Players)</UButton>
     </div>
     <div class="flex flex-col items-center justify-center h-full p-5">
@@ -244,6 +245,7 @@ let toast;
         <h1 class="xl:text-3xl">Server is unreachable. This site is likely shutdown.</h1>
       </template>
     </div>
+    <Footer/>
   </div>
 </template>
 

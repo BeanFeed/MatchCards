@@ -1,5 +1,11 @@
 <script setup lang="js">
 
+import {useRoute, useRouter} from "vue-router";
+
+const router = useRouter();
+
+const route = useRoute();
+
 </script>
 
 <template>
@@ -11,7 +17,8 @@
       <h1 class="text-center text-2xl font-bold w-full">Match Cards</h1>
     </div>
     <div class="w-full p-1 justify-end gap-2">
-      <UButton variant="ghost" class="text-white">Scoreboard</UButton>
+      <UButton v-if="route.name !== 'scoreboard'" @click="router.push('/scoreboard')" variant="ghost" class="text-white">Scoreboard</UButton>
+      <UButton v-else @click="router.push('/')" variant="ghost" class="text-white">Home</UButton>
     </div>
 
   </div>

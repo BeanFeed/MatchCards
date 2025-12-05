@@ -9,16 +9,18 @@ namespace MatchCards.Hubs;
 [Authorize]
 public class GameHub(GameService gameService) : Hub
 {
-    public static Dictionary<Guid, string> ConnectedPlayers = new();
+    public static readonly Dictionary<Guid, string> ConnectedPlayers = new();
 
     public override async Task OnConnectedAsync()
     {
         if(Context.User == null) Context.Abort();
-        if(ConnectedPlayers.ContainsKey(Guid.Parse(Context.User!.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)!.Value)))
+        if(ConnectedPlayers.Any(x => x.Key.ToString().ToLower() == Context.User!.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)!.Value.ToLower()))
         {
             ConnectedPlayers.Remove(Guid.Parse(Context.User!.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)!.Value));
         }
         ConnectedPlayers.Add(Guid.Parse(Context.User!.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)!.Value), Context.ConnectionId);
+        await gameService.CheckForGameGroup(
+            Guid.Parse(Context.User!.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)!.Value));
     }
 
     public override async Task OnDisconnectedAsync(Exception exception)
@@ -32,7 +34,8 @@ public class GameHub(GameService gameService) : Hub
     {
         try
         {
-            await gameService.FlipCard(flipCard);
+            if(ConnectedPlayers.TryGetValue(flipCard.PlayerId, out var player) && player == Context.ConnectionId) await gameService.FlipCard(flipCard);
+            else throw new Exception("You are not authorized to perform this action.");
         }
         catch (Exception e)
         {

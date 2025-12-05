@@ -4,7 +4,7 @@ import {onMounted, onUnmounted, ref} from "vue";
 import {useUserStore} from "@/stores/user.js";
 import {useRouter} from "vue-router";
 import {useSignalRStore} from "@/stores/signalr.js";
-import {getLobby, getRequests, joinLobby} from "@/requests/game.js";
+import {getLobby, getRequests, joinLobby, leaveLobby} from "@/requests/game.js";
 
 const userStore = useUserStore();
 const signalr = useSignalRStore();
@@ -54,12 +54,14 @@ onMounted(async () => {
 
 });
 
-onUnmounted(() => {
+onUnmounted(async () => {
   if(signalr.connected) {
     signalr.connection.off("LobbyChange");
     signalr.connection.off("ReceiveRequest");
     signalr.connection.off("GameStarted");
   }
+
+  await leaveLobby();
 
 })
 </script>
@@ -67,7 +69,8 @@ onUnmounted(() => {
 <template>
 <div class="flex flex-col h-screen">
   <Navbar/>
-  <div class="w-full px-5 flex flex-col h-full pt-4">
+  <div class="w-full px-5 flex flex-col h-full pt-4 relative">
+    <UButton @click="router.push('/')" class="w-max">Home</UButton>
     <h2 class="mb-2 text-lg font-bold">Players</h2>
     <div class="flex flex-wrap gap-2 h-full overflow-y-auto">
       <LobbyPlayer v-if="lobby.length > 0"  v-for="player in lobby" :player="player"/>
@@ -79,6 +82,7 @@ onUnmounted(() => {
       <h2 v-else>No requests</h2>
     </div>
   </div>
+  <Footer/>
 </div>
 </template>
 

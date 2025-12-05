@@ -21,7 +21,7 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(x =>
     {
-        x.WithOrigins("http://localhost:3000", "https://matchcards.beanfeed.com")
+        x.WithOrigins("http://localhost:3000", "https://matchcards.beanfeed.com", "http://10.47.190.235:3000")
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials();
@@ -84,6 +84,8 @@ app.MapScalarApiReference(options =>
 });
 
 app.UseCors();
+
+
 
 app.UseAuthentication();
 

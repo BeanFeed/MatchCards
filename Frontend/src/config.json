@@ -1,3 +1,10 @@
 {
-  "backendUrl": "http://localhost:5083"
+  //"backendUrl": "http://10.47.190.235:5083",
+  "backendUrl": "https://matchcards.beanfeed.com",
+  "prompts": [
+    "My vision has broadened since writing that essay, as I now see engineering not just as a path centered on computer science but as a diverse field full of interconnected disciplines and opportunities. I choose engineering because it lets me build on my passion for computing while giving me the flexibility to explore new areas and solve meaningful problems.",
+    "Computer science excites me because it allows me to build real systems, solve complex problems, and constantly learn new technologies that align with my passion for programming and my long-term goal of becoming a versatile software developer. To be successful, I will need strong problem-solving skills, discipline, collaboration, and a commitment to continuous learning, using strategies like hands-on practice, seeking mentorship, and taking challenging projects that push my abilities.",
+    "To me, being a successful engineer means creating practical, meaningful solutions while continually learning, collaborating well, and taking responsibility for the quality of my work. I hope to begin my career as a software developer and, five to ten years later, grow into a senior or lead engineering role where I design larger systems and mentor others.",
+    "Build a String Academic Foundation -> Gain Hands-On Experience -> Get Involved and Collaborate -> Seek Professional Exposure -> Develop Professional Skills -> Continue Learning and Improving -> Transition into Career"
+  ]
 }

@@ -67,6 +67,22 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
         await gameHub.Clients.All.SendAsync("LobbyChange");
     }
 
+    public async Task CheckForGameGroup(Guid player)
+    {
+        GameState[] games = await context.GameStates.Where(x => x.Player1Id == player || x.Player2Id == player).ToArrayAsync();
+        foreach (var game in games)
+        {
+            try
+            {
+                await gameHub.Groups.AddToGroupAsync(GameHub.ConnectedPlayers[player], game.Id.ToString());
+            }
+            catch (Exception e)
+            {
+                
+            }
+        }
+    }
+
     public async Task RemoveFromLobby(Guid id)
     {
         lobby.RemoveAll(x => x == id);
@@ -92,7 +108,8 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
         if (!requests.Any(x => x.requestId == requesterId && x.opponentId == opponentId))
         {
             requests.Add(new GameRequestModel() { requestId = requesterId, opponentId = opponentId, requestDate = DateTime.UtcNow });
-            await gameHub.Clients.Client(GameHub.ConnectedPlayers[opponentId]).SendAsync("ReceiveRequest");
+            
+            if(GameHub.ConnectedPlayers.TryGetValue(opponentId, out var player)) await gameHub.Clients.Client(player).SendAsync("ReceiveRequest");
         }
     }
 
@@ -192,15 +209,30 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
         
         if(GameHub.ConnectedPlayers.TryGetValue(player2, out var player)) await gameHub.Groups.AddToGroupAsync(player, gameId.ToString());
         if(GameHub.ConnectedPlayers.TryGetValue(requesterId, out var requester)) await gameHub.Groups.AddToGroupAsync(requester, gameId.ToString());
+
+        try
+        {
+            await gameHub.Clients.Group(gameId.ToString()).SendAsync("GameStarted", gameId);
+        }
+        catch (Exception e)
+        {
+            
+        }
         
-        await gameHub.Clients.Group(gameId.ToString()).SendAsync("GameStarted", gameId);
+        await gameHub.Clients.All.SendAsync("ScoreboardUpdate");
+
         
         return gameState;
     }
 
     public async Task<GameState[]> GetActiveGames()
     {
-        return await context.GameStates.Where(x => !x.IsGameOver).ToArrayAsync();
+        return await context.GameStates.Where(x => !x.IsGameOver).OrderBy(x => x.GameStartTime).Take(10).ToArrayAsync();
+    }
+
+    public async Task<GameState[]> GetRecentGames()
+    {
+        return await context.GameStates.Where(x => x.IsGameOver).OrderByDescending(x => x.GameStartTime).Take(10).ToArrayAsync();
     }
     
     public async Task<GameState> GetGameState(Guid gameId)
@@ -217,6 +249,7 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
 
     public async Task FlipCard(FlipCard card)
     {
+        
         GameState gameState = await context.GameStates.FindAsync(card.GameStateId) ??
                               throw new Exception("Game not found.");
         CardState cardState = gameState.Cards.FirstOrDefault(x => x.Id == card.CardId) ??
@@ -230,12 +263,8 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
         {
             try
             {
-                if (card.PlayerId == gameState.Player1Id)
-                    await gameHub.Clients.User(GameHub.ConnectedPlayers[gameState.Player2Id!.Value])
-                        .SendAsync("CardFlip", card.CardId);
-                else
-                    await gameHub.Clients.User(GameHub.ConnectedPlayers[gameState.Player1Id])
-                        .SendAsync("CardFlip", card.CardId);
+                await gameHub.Clients.Group(gameState.Id.ToString())
+                    .SendAsync("CardFlip", card.CardId);
             }
             catch (Exception e)
             {
@@ -292,6 +321,9 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
         }
         
         await context.SaveChangesAsync();
+        
+        await gameHub.Clients.All.SendAsync("ScoreboardUpdate");
+
 
         if (gameState.IsGameOver)
         {
@@ -311,36 +343,35 @@ public class GameService(GameContext context, IHttpContextAccessor httpContextAc
 // File: `MatchCards/Services/GameService.cs`
     private async Task GenerateCards(Guid gameId)
     {
-        // create 24 values: two of each 1..12
+        // create 24 values: two of each 1..8
         List<int> cardValues = new List<int>();
-        for (int i = 1; i <= 12; i++)
+        for (int i = 1; i <= 10; i++)
         {
             cardValues.Add(i);
             cardValues.Add(i);
         }
     
-        Random random = new Random();
-    
-        for (int x = 0; x < 6; x++)
+        // shuffle using Fisher-Yates
+        var rng = Random.Shared;
+        for (int i = cardValues.Count - 1; i > 0; i--)
         {
-            for (int y = 0; y < 4; y++)
+            int j = rng.Next(i + 1);
+            (cardValues[i], cardValues[j]) = (cardValues[j], cardValues[i]);
+        }
+    
+        // create a flat sequence of cards (position is the sequence index)
+        for (int position = 0; position < cardValues.Count; position++)
+        {
+            CardState newCard = new CardState()
             {
-                int faceIndex = random.Next(cardValues.Count); // use Count, not Count - 1
-                int value = cardValues[faceIndex];
-                cardValues.RemoveAt(faceIndex);
+                Id = Guid.NewGuid(),
+                GameStateId = gameId,
+                Position = position, // sequence index instead of Column/Row
+                IsFaceUp = false,
+                CardIndex = cardValues[position]
+            };
     
-                CardState newCard = new CardState()
-                {
-                    Id = Guid.NewGuid(),
-                    GameStateId = gameId,
-                    Column = x,
-                    Row = y,
-                    IsFaceUp = false,
-                    CardIndex = value
-                };
-    
-                await context.CardStates.AddAsync(newCard);
-            }
+            await context.CardStates.AddAsync(newCard);
         }
     
         await context.SaveChangesAsync();
